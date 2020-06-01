@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from cmath import exp, phase
 from math import pi
 

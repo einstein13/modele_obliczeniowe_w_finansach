@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 
-class s2_main(object):
+class s3_main(object):
 
     data = {}
 
