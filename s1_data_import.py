@@ -3,12 +3,20 @@
 import codecs
 from datetime import date
 
+from plots import plot
+
+# what are the filenames
 filenames = {
-    'archive': 'source/archiwum_tab_a_%d.csv',
-    'raw_extract': 'source/raw_extract.csv'
+    'archive': 'source/archiwum_tab_a_%d.csv', # archives
+    'raw_extract': 'source/raw_extract.csv', # target for raw data extract
+    'basic_plot': 'plots/%s_raw_data.png', # plot for raw currency data
 }
 
+# what are year ranges
+years = [2012, 2020]
 
+# what is the currency
+curr = "USD"
 
 class RawFileExtract(object):
     def __init__(self):
@@ -17,6 +25,7 @@ class RawFileExtract(object):
 
     def extract_from_file(self, year):
         # returns two lists: dates in string, values in string (comma as decimal point!)
+        global curr, filenames
 
         result = [[], []]
         # file content
@@ -34,7 +43,7 @@ class RawFileExtract(object):
         usdpos = -1
         itr = 0
         while itr < len(oneline):
-            if "USD" in oneline[itr]:
+            if curr in oneline[itr]:
                 usdpos = itr
                 break
             itr += 1
@@ -60,8 +69,10 @@ class RawFileExtract(object):
         return result
 
     def extract_from_sources(self):
-        year_start = 2012
-        year_end = 2020
+        global years
+
+        year_start = years[0]
+        year_end = years[1]
         year = year_start
 
         result = [[], []]
@@ -74,6 +85,7 @@ class RawFileExtract(object):
         return result
 
     def save_to_file(self, data_input):
+        global filenames
         f = open(filenames['raw_extract'], "w")
         f.write(";".join(data_input[0]))
         f.write("\n")
@@ -140,6 +152,28 @@ class DataProcessor(object):
         return result
 
 
+class Plotter(object):
+    data = {}
+
+    def __init__(self, data):
+        super().__init__()
+        self.data = data
+        return None
+
+    def plot_to_file(self):
+        global curr, filenames
+        file = filenames['basic_plot'] % curr
+        data = self.data['input']['processed']
+
+        args = {}
+        args['filename'] = file
+        args['data'] = data
+        args['y_label'] = curr + "/PLN"
+        args['x_label'] = 'time [date]'
+
+        return plot(args)
+
+
 class s1_main(object):
 
     data = {}
@@ -162,4 +196,7 @@ class s1_main(object):
         input_values = d.raw_to_values()
         self.data['input']['processed'] = input_values
 
-        pass
+        p = Plotter(self.data)
+        p.plot_to_file()
+
+        return self.data
