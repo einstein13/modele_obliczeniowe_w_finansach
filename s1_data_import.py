@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import codecs
-
+from datetime import date
 
 filenames = {
     'archive': 'source/archiwum_tab_a_%d.csv',
@@ -9,8 +9,8 @@ filenames = {
 }
 
 
-class raw_file_extract(object):
-    """docstring for raw_file_extract"""
+
+class RawFileExtract(object):
     def __init__(self):
         super().__init__()
         return
@@ -20,10 +20,13 @@ class raw_file_extract(object):
 
         result = [[], []]
         # file content
-        file = codecs.open(filenames['archive'] % year, encoding="cp1250", mode="r")
-        content = file.read()
-        file.close()
-        lines = content.split("\r\n")
+        try:
+            file = codecs.open(filenames['archive'] % year, encoding="cp1250", mode="r")
+            content = file.read()
+            file.close()
+            lines = content.split("\r\n")
+        except Exception as e:
+            return result
         
         # find USD position
         oneline = lines[0]
@@ -79,6 +82,64 @@ class raw_file_extract(object):
         f.close()
         return
 
+
+class DataProcessor(object):
+
+    dates_raw = []
+    values_raw = []
+
+    def __init__(self, input_raw):
+        super().__init__()
+        self.dates_raw = input_raw[0]
+        self.values_raw = input_raw[1]
+        return
+
+    def str_to_date(self, str_date):
+        if len(str_date) != 8:
+            return None
+        year = str_date[0:4]
+        month = str_date[4:6]
+        day = str_date[6:8]
+        new_date = None
+        try:
+            year = int(year)
+            month = int(month)
+            day = int(day)
+            new_date = date(year, month, day)
+        except Exception as e:
+            return None
+        return new_date
+
+    def str_to_value(self, value):
+        new_value = value.replace(",", ".")
+        try:
+            new_value = float(new_value)
+        except Exception as e:
+            return None
+        return new_value
+        
+    def raw_to_values(self):
+        result = [[], []]
+
+        if len(self.dates_raw) != len(self.values_raw):
+            return result
+
+        itr = 0
+        while itr < len(self.dates_raw):
+            date = self.dates_raw[itr]
+            value = self.values_raw[itr]
+            date = self.str_to_date(date)
+            value = self.str_to_value(value)
+            if date != None and value != None:
+                result[0].append(date)
+                result[1].append(value)
+            else:
+                break
+            itr += 1
+
+        return result
+
+
 class s1_main(object):
 
     data = {}
@@ -90,7 +151,15 @@ class s1_main(object):
         return
 
     def run(self):
-        r = raw_file_extract()
-        self.data['raw_input'] = r.extract_from_sources()
-        r.save_to_file(self.data['raw_input'])
+        r = RawFileExtract()
+        if not 'input' in self.data:
+            self.data['input'] = {}
+        input_raw = r.extract_from_sources()
+        self.data['input']['raw'] = input_raw
+        r.save_to_file(input_raw)
+
+        d = DataProcessor(input_raw)
+        input_values = d.raw_to_values()
+        self.data['input']['processed'] = input_values
+
         pass
