@@ -169,7 +169,7 @@ class Plotter(object):
         args['filename'] = file
         args['data'] = data
         args['y_label'] = curr + "/PLN"
-        args['x_label'] = 'time [date]'
+        args['x_label'] = 'czas [data]'
 
         return plot(args)
 
