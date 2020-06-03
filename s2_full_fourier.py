@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 
+from plots import plot
+from fourier import FourierAnalysis
+from settings import *
+
 
 class s2_main(object):
 
@@ -12,4 +16,6 @@ class s2_main(object):
         return
 
     def run(self):
-        pass
+        f = FourierAnalysis(self.data)
+        f.basic_analysis()
+        return self.data

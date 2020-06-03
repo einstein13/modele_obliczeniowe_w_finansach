@@ -3,6 +3,7 @@
 from matplotlib import pyplot as plt
 
 def plot(data):
+    plt.clf()
     # wymagane dane
 
     # nie ma danych do wyświetlenia
@@ -26,6 +27,15 @@ def plot(data):
     # właściwe przetwarzanie
 
     plt.plot(data['data'][0], data['data'][1])
+
+    if 'highlight_data' in data:
+        add_data = [[], []]
+        for itr in data['highlight_data']:
+            add_data[0].append(data['data'][0][itr])
+            add_data[1].append(data['data'][1][itr])
+        size = [8]*len(add_data[0])
+        plt.scatter(add_data[0], add_data[1], s=size, color='r')
+
     if 'y_label' in data:
         plt.ylabel(data['y_label'])
     if 'x_label' in data:

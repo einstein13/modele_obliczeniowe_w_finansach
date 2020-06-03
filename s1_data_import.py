@@ -4,19 +4,7 @@ import codecs
 from datetime import date
 
 from plots import plot
-
-# what are the filenames
-filenames = {
-    'archive': 'source/archiwum_tab_a_%d.csv', # archives
-    'raw_extract': 'source/raw_extract.csv', # target for raw data extract
-    'basic_plot': 'plots/%s_raw_data.png', # plot for raw currency data
-}
-
-# what are year ranges
-years = [2012, 2020]
-
-# what is the currency
-curr = "USD"
+from settings import *
 
 class RawFileExtract(object):
     def __init__(self):
@@ -25,7 +13,6 @@ class RawFileExtract(object):
 
     def extract_from_file(self, year):
         # returns two lists: dates in string, values in string (comma as decimal point!)
-        global curr, filenames
 
         result = [[], []]
         # file content
@@ -69,8 +56,6 @@ class RawFileExtract(object):
         return result
 
     def extract_from_sources(self):
-        global years
-
         year_start = years[0]
         year_end = years[1]
         year = year_start
@@ -85,7 +70,6 @@ class RawFileExtract(object):
         return result
 
     def save_to_file(self, data_input):
-        global filenames
         f = open(filenames['raw_extract'], "w")
         f.write(";".join(data_input[0]))
         f.write("\n")
@@ -161,7 +145,6 @@ class Plotter(object):
         return None
 
     def plot_to_file(self):
-        global curr, filenames
         file = filenames['basic_plot'] % curr
         data = self.data['input']['processed']
 
