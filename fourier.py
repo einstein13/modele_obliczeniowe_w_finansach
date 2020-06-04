@@ -77,19 +77,67 @@ def dft_inv_full(equation, timing):
 
     return [timing, values, values_abs, values_fi, values_re, values_im]
 
+
 class Fitter(object):
 
-    self.fourier = None
-    self.current_equation = []
-    self.current_distance = []
+    fourier = None
+    current_equation = []
+    current_distance = []
 
     def __init__(self, fourierAnalysisObject):
         super(Fitter, self).__init__()
         self.fourier = fourierAnalysisObject
 
     def calculate_distance(self, equation):
-        pass
-        
+        # values
+        real_values = self.fourier.data['input']['processed'][1]
+        fitted_values = self.fourier.fourier_analyse_inverse(equation)
+        fitted_values = fitted_values['signal_abs']
+
+        # calculations
+        itr = 0
+        itr_max = len(fitted_values)
+        total = 0
+        while itr < itr_max:
+            total += (fitted_values[itr] - real_values[itr]) ** 2
+            itr += 1
+
+        # result
+        return total
+    
+    def randomize_equation(self, equation):
+        f = range_lookup_factor
+        new_equation = []
+        for el in equation:
+            if type(el) in [float, int]:
+                new_equation.append(uniform(el-f, el+f))
+            if type(el) is list:
+                partial = []
+                partial.append(uniform(el[0]*(1-f), el[0]*(1+f))) # amplituda
+                partial.append(uniform(el[1]*(1-f), el[1]*(1+f))) # częstość
+                partial.append(uniform(el[2]-f, el[2]+f)) # faza
+                new_equation.append(partial)
+        return new_equation
+
+    def run_fit(self):
+        self.current_equation = self.fourier.equation_from_maxims
+        self.current_distance = self.calculate_distance(self.current_equation)
+
+        counter = 0
+        counter_all = 0
+        while counter < failed_lookup_tries:
+            counter += 1
+            counter_all += 1
+            new_equation = self.randomize_equation(self.current_equation)
+            new_distance = self.calculate_distance(new_equation)
+            if new_distance < self.current_distance:
+                self.current_distance = new_distance
+                self.current_equation = new_equation
+                print(". -> %d" % counter)
+                counter = 0
+
+        return self.current_equation
+
 
 class FourierAnalysis(object):
 
@@ -292,6 +340,10 @@ class FourierAnalysis(object):
         self.fourier_analyse()
         self.plot_freq_basic_analysis()
         self.plot_basic_data_with_dff_fit()
+        f = Fitter(self)
+        print(f.calculate_distance(self.equation_from_maxims))
+        print(f.run_fit())
+        print(f.current_distance)
         return
 
 
