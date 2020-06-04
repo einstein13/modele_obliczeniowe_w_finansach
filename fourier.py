@@ -3,6 +3,7 @@
 from cmath import exp, phase
 from math import pi
 from datetime import timedelta
+from random import uniform
 from statistics import mean
 
 from numpy import arange
@@ -44,16 +45,67 @@ def dft_full(signal, timing, omegas):
 
     return [omegas, dfts, dft_abs, dft_fi, dft_re, dft_im]
 
+def dft_inv(equation, time, signal_count):
+    result = 0.0
+    for el in equation:
+        if type(el) in [float, int]:
+            result += el
+        elif type(el) is list:
+            j = complex(0, 1)
+            # exp(i * 2pi * omega_n * t + i*fi_n )
+            partial = exp(j*(2*pi*el[1]*time + el[2]))
+            # A_n / N
+            partial *= 2 * el[0] / signal_count
+            result += partial
+    return result
+
+def dft_inv_full(equation, timing):
+    values = []
+    values_abs = []
+    values_fi = []
+    values_re = []
+    values_im = []
+
+    signal_count = len(timing)
+    for time in timing:
+        partial = dft_inv(equation, time, signal_count)
+        values.append(partial)
+        values_abs.append(abs(partial))
+        values_fi.append(phase(partial))
+        values_re.append(partial.real)
+        values_im.append(partial.imag)
+
+    return [timing, values, values_abs, values_fi, values_re, values_im]
+
+class Fitter(object):
+
+    self.fourier = None
+    self.current_equation = []
+    self.current_distance = []
+
+    def __init__(self, fourierAnalysisObject):
+        super(Fitter, self).__init__()
+        self.fourier = fourierAnalysisObject
+
+    def calculate_distance(self, equation):
+        pass
+        
 
 class FourierAnalysis(object):
 
     data = {}
     freq_domain = {}
+    valuable_maxims = []
+    equation_from_maxims = []
+    signal_domain = {}
 
     def __init__(self, data):
         super().__init__()
         self.data = data
         self.freq_domain = {}
+        self.valuable_maxims = []
+        self.equation_from_maxims = []
+        self.signal_domain = {}
         return
 
     def find_maxims_index(self):
@@ -108,7 +160,7 @@ class FourierAnalysis(object):
         return result
 
     def prepare_values(self):
-        values = self.data['input']['processed'][1]
+        values = list(self.data['input']['processed'][1])
         average = mean(values)
         for itr in range(len(values)):
             values[itr] -= average
@@ -132,11 +184,59 @@ class FourierAnalysis(object):
         self.freq_domain['input']['timing'] = list(timing)
         return self.freq_domain
 
+    def find_valuable_maxims(self, verbose=False):
+        # finds how many frequences are "above noise"
+        points = self.find_maxims_index()
+        
+        # points and values
+        halves = []
+        p_max = len(self.freq_domain['omegas']) // 2 + 1
+        for p in points:
+            if p > p_max:
+                break
+            halves.append([self.freq_domain['dft_abs'][p], p])
+        halves.sort(reverse=True)
+
+        # if too many below treshold, stop
+        result = [halves[0][1]]
+        if verbose:
+            print("* * * Znalezione częstości * * *")
+            print("Amplituda / Częstość / Długość okresu / indeks")
+            data = (
+                halves[0][0],
+                self.freq_domain['omegas'][halves[0][1]],
+                1 / self.freq_domain['omegas'][halves[0][1]],
+                halves[0][1]
+                )
+            print("%g / %g / %g / %d" % data)
+        for itr in range(1, len(halves)):
+            treshold = halves[itr][0] * noise_treshold
+
+            # https://stackoverflow.com/questions/10543303/number-of-values-in-a-list-greater-than-a-certain-number
+            counter = sum(el[0] > treshold for el in halves)
+            if counter >= len(result) + count_treshold:
+                break
+
+            if verbose:
+                data = (
+                    halves[itr][0],
+                    self.freq_domain['omegas'][halves[itr][1]],
+                    1 / self.freq_domain['omegas'][halves[itr][1]],
+                    halves[itr][1]
+                    )
+                print("%g / %g / %g / %d" % data)
+            result.append(halves[itr][1])
+
+        if verbose:
+            print("* * * * * *")
+        self.valuable_maxims = result
+        return result
+
     def plot_freq_basic_analysis(self):
         omegas = self.freq_domain['omegas']
         dft_abs = self.freq_domain['dft_abs']
         
-        points = self.find_maxims_index()
+        points = self.find_valuable_maxims()
 
         file = filenames['basic_fourier_analysis_freq'] % curr
 
@@ -148,9 +248,50 @@ class FourierAnalysis(object):
         args['x_label'] = 'częstość [1/dzień]'
         return plot(args)
 
+    def translate_maxims_to_equation(self):
+        self.equation_from_maxims.append(self.freq_domain['input']['base_average'])
+
+        for index in self.valuable_maxims:
+            additional = []
+            additional.append(self.freq_domain['dft_abs'][index])
+            additional.append(self.freq_domain['omegas'][index])
+            additional.append(self.freq_domain['dft_fi'][index])
+            self.equation_from_maxims.append(additional)
+
+        return self.equation_from_maxims
+
+    def fourier_analyse_inverse(self, equation):
+        partial = dft_inv_full(equation, self.freq_domain['input']['timing'])
+        self.signal_domain['timing'] = self.freq_domain['input']['timing']
+        self.signal_domain['signal'] = list(partial[1])
+        self.signal_domain['signal_abs'] = list(partial[2])
+        self.signal_domain['signal_fi'] = list(partial[3])
+        self.signal_domain['signal_re'] = list(partial[4])
+        self.signal_domain['signal_im'] = list(partial[5])
+        return self.signal_domain
+
+    def plot_basic_data_with_dff_fit(self):
+        self.find_valuable_maxims(True)
+
+        equation = self.translate_maxims_to_equation()
+        fitted_signal = self.fourier_analyse_inverse(equation)
+
+        file = filenames['basic_fourier_analysis_fit'] % curr
+        
+        args = {}
+        args['data'] = [
+            self.data['input']['processed'][0], # time
+            self.data['input']['processed'][1], # real values
+            fitted_signal['signal_abs'] # fitted values
+            ]
+        args['filename'] = file
+
+        return plot(args)
+
     def basic_analysis(self):
         self.fourier_analyse()
         self.plot_freq_basic_analysis()
+        self.plot_basic_data_with_dff_fit()
         return
 
 

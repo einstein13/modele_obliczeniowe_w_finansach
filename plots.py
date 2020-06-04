@@ -26,7 +26,8 @@ def plot(data):
 
     # właściwe przetwarzanie
 
-    plt.plot(data['data'][0], data['data'][1])
+    for itr in range(1, len(data['data'])):
+        plt.plot(data['data'][0], data['data'][itr])
 
     if 'highlight_data' in data:
         add_data = [[], []]

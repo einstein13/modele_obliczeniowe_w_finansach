@@ -23,3 +23,8 @@ local_maximum_range = 15
 
 # shortest timedelta for calculations (1 day)
 timedelta_epsilon = timedelta(1)
+
+# value in range 0.0 .. 1.0; higher value - more sine waves are respected as valuable
+noise_treshold = 0.75
+# int value; higher value - less strict about how many sin waves are respected
+count_treshold = 5
