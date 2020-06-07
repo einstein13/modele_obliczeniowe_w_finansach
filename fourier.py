@@ -5,6 +5,7 @@ from math import pi
 from datetime import timedelta
 from random import uniform
 from statistics import mean
+from sys import stdout
 
 from numpy import arange
 
@@ -87,6 +88,18 @@ class Fitter(object):
     def __init__(self, fourierAnalysisObject):
         super(Fitter, self).__init__()
         self.fourier = fourierAnalysisObject
+        self.current_equation = self.fourier.equation_from_maxims
+
+    def copy_equation(self, equation=None):
+        if equation is None:
+            equation = self.fourier.equation_from_maxims
+        result = []
+        for el in equation:
+            if type(el) is list:
+                result.append(list(el))
+            else:
+                result.append(el)
+        return result
 
     def calculate_distance(self, equation):
         # values
@@ -119,9 +132,10 @@ class Fitter(object):
                 new_equation.append(partial)
         return new_equation
 
-    def run_fit(self):
-        self.current_equation = self.fourier.equation_from_maxims
+    def nonlinear_random_fit(self):
         self.current_distance = self.calculate_distance(self.current_equation)
+        if debug:
+            print("Nonlinear random fit started, starting distance: %g" % self.current_distance)
 
         counter = 0
         counter_all = 0
@@ -133,10 +147,133 @@ class Fitter(object):
             if new_distance < self.current_distance:
                 self.current_distance = new_distance
                 self.current_equation = new_equation
-                print(". -> %d" % counter)
+
+                if debug:
+                    stdout.write("(%d: %g)" % (counter, self.current_distance))
+                    stdout.flush()
+
                 counter = 0
 
-        return self.current_equation
+        if debug:
+            print("\nNonlinear random fit finished, reached distance: %g" % self.current_distance)
+
+        return [counter != counter_all, self.current_equation]
+
+    def list_variables_paths(self):
+        equation = self.fourier.equation_from_maxims
+        result = []
+        for itr1 in range(len(equation)):
+            if type(equation[itr1]) in [float, int]:
+                result.append([itr1])
+            elif type(equation[itr1]) is list:
+                for itr2 in range(len(equation[itr1])):
+                    result.append([itr1, itr2])
+        return result
+
+    def compare_equations(self, equation1, equation2):
+        # zwraca True dla tych samych współczynników równania
+        max_diff = 10.0**(-6)
+        for itr1 in range(len(equation1)):
+            if type(equation1[itr1]) in [float, int]:
+                if abs(1 - equation1[itr1]/equation2[itr1]) > max_diff:
+                    return False
+            elif type(equation1[itr1]) is list:
+                for itr2 in range(len(equation1[itr1])):
+                    if abs(1 - equation1[itr1][itr2]/equation2[itr1][itr2]) > max_diff:
+                        return False
+        return True
+
+    def nonlinear_sequence_equation(self, equation, path, counter, factor):
+        if len(path) == 1:
+            # single value
+            value = equation[path[0]]
+            v_delta = 2*factor / nonlinear_lookup_split
+            v_new = value - factor + counter * v_delta
+            equation[path[0]] = v_new
+        elif len(path) == 2:
+            v_new = 0
+            if path[1] in [0, 1]:
+                value = equation[path[0]][path[1]]
+                v_delta = factor * (1 - 2*counter / nonlinear_lookup_split)
+                v_new = value * (1 - factor)
+            elif path[1] in [2]:
+                value = equation[path[0]][path[1]]
+                v_delta = 2*factor / nonlinear_lookup_split
+                v_new = value - factor + counter * v_delta
+            equation[path[0]][path[1]] = v_new
+
+        return equation
+
+    def nonlinear_sequence_fit_single(self, equation, path, factor):
+        starting_equation = self.copy_equation(equation)
+        best_equation = self.copy_equation(equation)
+        best_distance = self.calculate_distance(best_equation)
+        epsilon = 0.000007 # 7*10^-6
+
+        for itr in range(nonlinear_lookup_split):
+            current_equation = self.copy_equation(starting_equation)
+            current_equation = self.nonlinear_sequence_equation(current_equation, path, itr, factor)
+            current_distance = self.calculate_distance(current_equation)
+            if current_distance < best_distance and\
+                    (best_distance - current_distance) / best_distance > epsilon:
+                best_distance = current_distance
+                best_equation = current_equation
+        return [self.compare_equations(starting_equation, best_equation), best_equation]
+
+    def nonlinear_sequence_fit(self):
+        current_equation = self.copy_equation(self.current_equation)
+        current_distance = self.calculate_distance(current_equation)
+        paths = self.list_variables_paths()
+
+        if debug:
+            print("Nonlinear sequence fit started, starting distance: %g" % current_distance)
+
+        itr = 0
+        factor = range_lookup_factor
+        while itr < nonlinear_lookup_layers:
+
+            flag_changed = True
+            while flag_changed:
+                if debug:
+                    stdout.write("[")
+                    stdout.flush()
+                    old_distance = self.calculate_distance(current_equation)
+                
+                flag_changed = False
+                for path in paths:
+                    partial = self.nonlinear_sequence_fit_single(current_equation, path, factor)
+                    flag_changed = flag_changed or not partial[0]
+                    current_equation = partial[1]
+                    if debug:
+                        if partial[0]:
+                            stdout.write("-")
+                        else:
+                            stdout.write("+")
+                        stdout.flush()
+                if debug:
+                    current_distance = self.calculate_distance(current_equation)
+                    stdout.write("%g (%g%%)]" % (current_distance, 100*abs(current_distance - old_distance)/old_distance))
+                    stdout.flush()
+
+            factor *= nonlinear_lookup_factor_multiplier
+            itr += 1
+            if debug:
+                stdout.write(" >%d/%d> " % (itr, nonlinear_lookup_layers))
+                stdout.flush()
+
+        self.current_equation = current_equation
+        self.current_distance = current_distance
+
+        if debug:
+            print("\nNonlinear sequence fit finished, reached distance: %g" % self.current_distance)
+
+        return current_equation
+
+    def run_fit(self):
+        result = self.nonlinear_random_fit()
+        result = self.nonlinear_sequence_fit()
+        result = self.nonlinear_random_fit()
+        return result[1]
 
 
 class FourierAnalysis(object):
@@ -336,14 +473,30 @@ class FourierAnalysis(object):
 
         return plot(args)
 
+    def plot_data_with_equation(self, file_name, equation):
+        fitted_signal = self.fourier_analyse_inverse(equation)
+        
+        args = {}
+        args['data'] = [
+            self.data['input']['processed'][0], # time
+            self.data['input']['processed'][1], # real values
+            fitted_signal['signal_abs'] # fitted values
+            ]
+        args['filename'] = file_name
+
+        return plot(args)
+
     def basic_analysis(self):
         self.fourier_analyse()
         self.plot_freq_basic_analysis()
         self.plot_basic_data_with_dff_fit()
         f = Fitter(self)
-        print(f.calculate_distance(self.equation_from_maxims))
-        print(f.run_fit())
-        print(f.current_distance)
+        if debug:
+            print("Starting distance: " + str(f.calculate_distance(f.current_equation)))
+        fit = f.run_fit()
+        if debug:
+            print("Finished distance: " + str(f.current_distance))
+        self.plot_data_with_equation("test.png", fit)
         return
 
 

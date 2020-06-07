@@ -1,5 +1,9 @@
 from datetime import timedelta
 
+# shows some analysis points to reveal that the program is still running
+debug = True
+
+
 # what are the filenames
 filenames = {
     'archive': 'source/archiwum_tab_a_%d.csv', # archives
@@ -46,4 +50,13 @@ count_treshold = 5
 range_lookup_factor = 0.1
 
 # how many tries before give up; lower - faster & less exact
-failed_lookup_tries = 2000
+failed_lookup_tries = 3000
+
+# how many sequence layers should be considered; lower - less specific lookup
+nonlinear_lookup_layers = 5
+
+# factor for layer lookup range, value 0.0 .. 1.0; lower - faster collapse of value
+nonlinear_lookup_factor_multiplier = 0.2
+
+# how many tries for each layer; larger - more tries for layer
+nonlinear_lookup_split = 200
