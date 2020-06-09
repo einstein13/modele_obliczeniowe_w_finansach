@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from cmath import exp, phase
-from math import pi
+from math import pi, sin
 from datetime import timedelta
 from random import uniform
 from statistics import mean
@@ -54,7 +54,9 @@ def dft_inv(equation, time, signal_count):
         elif type(el) is list:
             j = complex(0, 1)
             # exp(i * 2pi * omega_n * t + i*fi_n )
-            partial = exp(j*(2*pi*el[1]*time + el[2]))
+            # partial = exp(j*(2*pi*el[1]*time + el[2]))
+            # partial = sin(2*pi*el[1]*time + el[2])
+            partial = sin(el[1]*time + el[2])
             # A_n / N
             partial *= 2 * el[0] / signal_count
             result += partial
@@ -89,10 +91,30 @@ class Fitter(object):
         super(Fitter, self).__init__()
         self.fourier = fourierAnalysisObject
         self.current_equation = self.fourier.equation_from_maxims
+        return
+
+    def print_equation(self, equation=None):
+        if equation is None:
+            equation = self.current_equation
+        number_of_elements = len(self.fourier.freq_domain['input']['timing'])
+        print("* * * Aktualne równanie * * *")
+        print("Suma:")
+        for el in equation:
+            if type(el) in [float, int]:
+                print("    %g*t" % el)
+            elif type(el) is list:
+                # data = [el[0]*2/number_of_elements, el[1]*2*pi]
+                data = [el[0]*2/number_of_elements, el[1]]
+                if el[2] < 0:
+                    data.append(el[2] + 2*pi)
+                else:
+                    data.append(el[2])
+                print("    %g*sin(%g*t+%g)" % tuple(data))
+        print("* * * * * *")
 
     def copy_equation(self, equation=None):
         if equation is None:
-            equation = self.fourier.equation_from_maxims
+            equation = self.current_equation
         result = []
         for el in equation:
             if type(el) is list:
@@ -135,7 +157,7 @@ class Fitter(object):
     def nonlinear_random_fit(self):
         self.current_distance = self.calculate_distance(self.current_equation)
         if debug:
-            print("Nonlinear random fit started, starting distance: %g" % self.current_distance)
+            print("Nieliniowe dopasowanie (losowe), odległość początkowa: %g" % self.current_distance)
 
         counter = 0
         counter_all = 0
@@ -155,7 +177,7 @@ class Fitter(object):
                 counter = 0
 
         if debug:
-            print("\nNonlinear random fit finished, reached distance: %g" % self.current_distance)
+            print("\nNieliniowe dopasowanie (losowe), osiągnięto odległość: %g" % self.current_distance)
 
         return [counter != counter_all, self.current_equation]
 
@@ -226,7 +248,7 @@ class Fitter(object):
         paths = self.list_variables_paths()
 
         if debug:
-            print("Nonlinear sequence fit started, starting distance: %g" % current_distance)
+            print("Nieliniowe dopasowanie (sekwencyjne), odległość początkowa: %g" % current_distance)
 
         itr = 0
         factor = range_lookup_factor
@@ -265,14 +287,33 @@ class Fitter(object):
         self.current_distance = current_distance
 
         if debug:
-            print("\nNonlinear sequence fit finished, reached distance: %g" % self.current_distance)
+            print("\nNieliniowe dopasowanie (sekwencyjne), osiągnięto odległość: %g" % self.current_distance)
 
         return current_equation
 
     def run_fit(self):
+
+        if debug:
+            self.print_equation()
+
         result = self.nonlinear_random_fit()
+        self.fourier.plot_data_with_equation("test1.png", result[1])
+
+        if debug:
+            self.print_equation()
+
         result = self.nonlinear_sequence_fit()
+        self.fourier.plot_data_with_equation("test2.png", result)
+
+        if debug:
+            self.print_equation()
+        
         result = self.nonlinear_random_fit()
+        self.fourier.plot_data_with_equation("test3.png", result[1])
+
+        if debug:
+            self.print_equation()
+
         return result[1]
 
 
@@ -399,7 +440,7 @@ class FourierAnalysis(object):
 
             # https://stackoverflow.com/questions/10543303/number-of-values-in-a-list-greater-than-a-certain-number
             counter = sum(el[0] > treshold for el in halves)
-            if counter >= len(result) + count_treshold:
+            if counter >= len(result) + count_treshold or itr >= max_count_treshold:
                 break
 
             if verbose:
@@ -434,16 +475,21 @@ class FourierAnalysis(object):
         return plot(args)
 
     def translate_maxims_to_equation(self):
-        self.equation_from_maxims.append(self.freq_domain['input']['base_average'])
+        equation = []
+        equation.append(self.freq_domain['input']['base_average'])
+
+        for sin_wave in additional_sin_waves:
+            equation.append(sin_wave)
 
         for index in self.valuable_maxims:
             additional = []
             additional.append(self.freq_domain['dft_abs'][index])
             additional.append(self.freq_domain['omegas'][index])
             additional.append(self.freq_domain['dft_fi'][index])
-            self.equation_from_maxims.append(additional)
+            equation.append(additional)
 
-        return self.equation_from_maxims
+        self.equation_from_maxims = equation
+        return equation
 
     def fourier_analyse_inverse(self, equation):
         partial = dft_inv_full(equation, self.freq_domain['input']['timing'])
@@ -492,11 +538,10 @@ class FourierAnalysis(object):
         self.plot_basic_data_with_dff_fit()
         f = Fitter(self)
         if debug:
-            print("Starting distance: " + str(f.calculate_distance(f.current_equation)))
+            print("Odległość początkowa: " + str(f.calculate_distance(f.current_equation)))
         fit = f.run_fit()
         if debug:
-            print("Finished distance: " + str(f.current_distance))
-        self.plot_data_with_equation("test.png", fit)
+            print("Odległość końcowa: " + str(f.current_distance))
         return
 
 

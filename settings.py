@@ -43,6 +43,12 @@ noise_treshold = 0.75
 # int value; higher value - less strict about how many sin waves are respected
 count_treshold = 5
 
+# int value; how many sin waves at max
+max_count_treshold = 3
+
+# additional parameters for initial sin wave
+additional_sin_waves = [[466.4, 0.00318, 3]]
+
 
 # # # Values used in numerical fitting # # #
 
