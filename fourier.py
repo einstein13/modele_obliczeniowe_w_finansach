@@ -80,7 +80,6 @@ def dft_inv_full(equation, timing):
 
     return [timing, values, values_abs, values_fi, values_re, values_im]
 
-
 class Fitter(object):
 
     fourier = None
@@ -317,6 +316,90 @@ class Fitter(object):
         return result[1]
 
 
+class Fitter2(object):
+
+    fourier = None
+    current_equation = []
+    blueprint_equation = []
+    number_of_elements = 0
+
+    def __init__(self, fourierAnalysisObject):
+        super(Fitter2, self).__init__()
+        self.fourier = fourierAnalysisObject
+        self.current_equation = self.fourier.equation_from_maxims
+        self.blueprint_equation = []
+        self.number_of_elements = len(self.fourier.data['input']['processed'][0])
+        self.prepare_blueprint()
+        return
+
+    def prepare_blueprint(self):
+        equation = self.current_equation
+        blueprint = []
+        for el in equation:
+            if type(el) in [int, float]:
+                blueprint.append(1)
+            elif type(el) is list:
+                blueprint.append(len(el))
+        self.blueprint_equation = blueprint
+        return blueprint
+
+    def copy_equation(self):
+        equation = self.current_equation
+        result = []
+        for el in equation:
+            if type(el) is list:
+                result.append(list(el))
+            else:
+                result.append(el)
+        return result
+
+    def flatten(self):
+        result = []
+        for el in self.current_equation:
+            if type(el) in [int, float]:
+                result.append(el)
+            elif type(el) is list:
+                result += el
+        return result
+
+    def unflatten(self, parameters):
+        result = []
+        blueprint = self.blueprint_equation
+        counter = 0
+        counter_max = 0
+        for value in blueprint:
+            counter_max += value
+            if value == 1:
+                result.append(parameters[counter])
+                counter += 1
+            else:
+                partial = []
+                while counter < counter_max:
+                    partial.append(parameters[counter])
+                    counter += 1
+                result.append(partial)
+        return result
+
+    def calculate_point(self, time, *parameters):
+        equation = self.unflatten(parameters)
+        result = []
+        for t in time:
+            value = dft_inv(equation, t, self.number_of_elements)
+            result.append(value)
+        return result
+
+    def run_fit(self):
+        from scipy.optimize import curve_fit
+
+        flatted = self.flatten()
+        xdata = self.fourier.freq_domain['input']['timing']
+        ydata = self.fourier.data['input']['processed'][1]
+        print("START")
+        result = curve_fit(self.calculate_point, xdata, ydata, p0=flatted)
+        print(result)
+        return None
+
+
 class FourierAnalysis(object):
 
     data = {}
@@ -536,12 +619,16 @@ class FourierAnalysis(object):
         self.fourier_analyse()
         self.plot_freq_basic_analysis()
         self.plot_basic_data_with_dff_fit()
+
         f = Fitter(self)
         if debug:
             print("Odległość początkowa: " + str(f.calculate_distance(f.current_equation)))
         fit = f.run_fit()
         if debug:
             print("Odległość końcowa: " + str(f.current_distance))
+            
+        # f = Fitter2(self)
+        # print(f.run_fit())
         return
 
 
