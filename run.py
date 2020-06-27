@@ -2,7 +2,7 @@
 
 from s1_data_import import s1_main
 from s2_full_fourier import s2_main
-from s3_fitting_fourier import s3_main
+from s3_rate_of_return import s3_main
 
 
 data = {}

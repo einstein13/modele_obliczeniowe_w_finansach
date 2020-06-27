@@ -30,7 +30,7 @@ curr = "USD"
 # # # Values for logarithmic rate of return # # #
 
 # +/-days for moving average; 3 means 7 total
-moving_average = 3
+moving_average_delta = 3
 
 
 # # # Values used in discrete fourier transformation # # #

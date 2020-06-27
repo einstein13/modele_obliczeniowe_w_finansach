@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import codecs
-from datetime import date
+from datetime import date, timedelta
 from math import log
 
 from plots import plot
@@ -135,7 +135,25 @@ class DataProcessor(object):
             itr += 1
 
         return result
-        
+
+    def moving_average(self, date):
+        start_date = date - timedelta(days=moving_average_delta)
+        end_date = date + timedelta(days=moving_average_delta)
+
+        result = []
+        for itr in range(len(self.dates_raw)):
+            actual_date = self.str_to_date(self.dates_raw[itr])
+            if actual_date < start_date:
+                continue
+            if actual_date > end_date:
+                continue
+            result.append(self.str_to_value(self.values_raw[itr]))
+
+        if len(result) == 0:
+            return 0
+
+        return sum(result) / len(result)
+
     def raw_to_log_returns(self):
         result = [[], []]
 
@@ -143,20 +161,25 @@ class DataProcessor(object):
             return result
 
         itr = 1
-        while itr < len(self.dates_raw):
-            date = self.dates_raw[itr]
-            value1 = self.values_raw[itr-1]
-            value2 = self.values_raw[itr]
-            date = self.str_to_date(date)
-            value1 = self.str_to_value(value1)
-            value2 = self.str_to_value(value2)
+        start_date = self.dates_raw[0]
+        start_date = self.str_to_date(start_date)
+        end_date = self.dates_raw[len(self.dates_raw) - 1]
+        end_date = self.str_to_date(end_date)
+        date = start_date
+        days_delta = 1 + moving_average_delta
+        while date < end_date:
+            value1 = self.moving_average(date)
+            value2 = self.moving_average(date + timedelta(days_delta))
+            if value1 == 0 or value2 == 0:
+                date += timedelta(days_delta)
+                continue
             value = log(value2/value1)
             if date != None and value != None:
                 result[0].append(date)
                 result[1].append(value)
             else:
                 break
-            itr += 1
+            date += timedelta(days_delta)
 
         return result
 
