@@ -296,19 +296,22 @@ class Fitter(object):
             self.print_equation()
 
         result = self.nonlinear_random_fit()
-        self.fourier.plot_data_with_equation("test1.png", result[1])
+        # self.fourier.plot_data_with_equation("test1.png", result[1])
 
         if debug:
             self.print_equation()
 
         result = self.nonlinear_sequence_fit()
-        self.fourier.plot_data_with_equation("test2.png", result)
+        # self.fourier.plot_data_with_equation("test2.png", result)
 
         if debug:
             self.print_equation()
         
         result = self.nonlinear_random_fit()
-        self.fourier.plot_data_with_equation("test3.png", result[1])
+
+        self.fourier.plot_data_with_equation(
+            filenames["basic_fit_analysis_fit"] % curr,
+            result[1])
 
         if debug:
             self.print_equation()

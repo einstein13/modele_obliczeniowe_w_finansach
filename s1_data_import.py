@@ -2,6 +2,7 @@
 
 import codecs
 from datetime import date
+from math import log
 
 from plots import plot
 from settings import *
@@ -113,7 +114,7 @@ class DataProcessor(object):
         except Exception as e:
             return None
         return new_value
-        
+
     def raw_to_values(self):
         result = [[], []]
 
@@ -126,6 +127,30 @@ class DataProcessor(object):
             value = self.values_raw[itr]
             date = self.str_to_date(date)
             value = self.str_to_value(value)
+            if date != None and value != None:
+                result[0].append(date)
+                result[1].append(value)
+            else:
+                break
+            itr += 1
+
+        return result
+        
+    def raw_to_log_returns(self):
+        result = [[], []]
+
+        if len(self.dates_raw) != len(self.values_raw):
+            return result
+
+        itr = 1
+        while itr < len(self.dates_raw):
+            date = self.dates_raw[itr]
+            value1 = self.values_raw[itr-1]
+            value2 = self.values_raw[itr]
+            date = self.str_to_date(date)
+            value1 = self.str_to_value(value1)
+            value2 = self.str_to_value(value2)
+            value = log(value2/value1)
             if date != None and value != None:
                 result[0].append(date)
                 result[1].append(value)
@@ -156,6 +181,18 @@ class Plotter(object):
 
         return plot(args)
 
+    def plot_to_file_log_return(self):
+        file = filenames['basic_log_return_plot'] % curr
+        data = self.data['input']['log_returns']
+
+        args = {}
+        args['filename'] = file
+        args['data'] = data
+        args['y_label'] = "logarytmiczna stopa zwrotu"
+        args['x_label'] = 'czas [data]'
+
+        return plot(args)
+
 
 class s1_main(object):
 
@@ -178,8 +215,11 @@ class s1_main(object):
         d = DataProcessor(input_raw)
         input_values = d.raw_to_values()
         self.data['input']['processed'] = input_values
+        input_values = d.raw_to_log_returns()
+        self.data['input']['log_returns'] = input_values
 
         p = Plotter(self.data)
         p.plot_to_file()
+        p.plot_to_file_log_return()
 
         return self.data

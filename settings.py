@@ -12,6 +12,7 @@ filenames = {
     'basic_fourier_analysis_freq': 'plots/%s_fourier_frequencies.png', # plot of dft result
     'basic_fourier_analysis_fit': 'plots/%s_fourier_raw_data_fit.png', # plot of fourier fit to raw data
     'basic_fit_analysis_fit': 'plots/%s_fourier_fit_data_fit.png', # plot of fit to data based on fourier
+    'basic_log_return_plot': 'plots/%s_raw_return_data.png', # plot of raw currency data as log return
 }
 
 
@@ -24,6 +25,12 @@ years = [2012, 2020]
 # what is the currency
 # used for downloading data from files
 curr = "USD"
+
+
+# # # Values for logarithmic rate of return # # #
+
+# +/-days for moving average; 3 means 7 total
+moving_average = 3
 
 
 # # # Values used in discrete fourier transformation # # #
@@ -48,6 +55,7 @@ max_count_treshold = 1
 
 # additional parameters for initial sin wave
 additional_sin_waves = [[466.4, 0.00318, 3]]
+# additional_sin_waves = []
 
 
 # # # Values used in numerical fitting # # #
