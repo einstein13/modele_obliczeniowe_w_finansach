@@ -31,7 +31,7 @@ curr = "USD"
 # # # Values for logarithmic rate of return # # #
 
 # +/-days for moving average; 3 means 7 total
-moving_average_delta = 0
+moving_average_delta = 10
 
 
 # # # Values used in discrete fourier transformation # # #
@@ -66,15 +66,12 @@ range_lookup_factor = 0.1
 
 # how many tries before give up; lower - faster & less exact
 failed_lookup_tries = 3000
-failed_lookup_tries = 300
 
 # how many sequence layers should be considered; lower - less specific lookup
 nonlinear_lookup_layers = 5
-nonlinear_lookup_layers = 1
 
 # factor for layer lookup range, value 0.0 .. 1.0; lower - faster collapse of value
 nonlinear_lookup_factor_multiplier = 0.2
 
 # how many tries for each layer; larger - more tries for layer
 nonlinear_lookup_split = 200
-nonlinear_lookup_split = 50
