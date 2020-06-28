@@ -100,7 +100,7 @@ class Fitter(object):
         print("Suma:")
         for el in equation:
             if type(el) in [float, int]:
-                print("    %g*t" % el)
+                print("    %g" % el)
             elif type(el) is list:
                 # data = [el[0]*2/number_of_elements, el[1]*2*pi]
                 data = [el[0]*2/number_of_elements, el[1]]
@@ -578,6 +578,8 @@ class FourierAnalysis(object):
         return equation
 
     def fourier_analyse_inverse(self, equation):
+        if 'input' not in self.freq_domain:
+            self.fourier_analyse()
         partial = dft_inv_full(equation, self.freq_domain['input']['timing'])
         self.signal_domain['timing'] = self.freq_domain['input']['timing']
         self.signal_domain['signal'] = list(partial[1])
@@ -629,9 +631,13 @@ class FourierAnalysis(object):
         fit = f.run_fit()
         if debug:
             print("Odległość końcowa: " + str(f.current_distance))
+
+        self.data['fourier_fit'] = {
+            'current_equation': f.current_equation,
+            'current_distance': f.current_distance,
+            }
             
         # f = Fitter2(self)
         # print(f.run_fit())
         return
-
 

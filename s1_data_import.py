@@ -211,7 +211,7 @@ class Plotter(object):
         args = {}
         args['filename'] = file
         args['data'] = data
-        args['y_label'] = "logarytmiczna stopa zwrotu"
+        args['y_label'] = "logarytmiczna stopa zwrotu, średnia %d dni" % (2*moving_average_delta+1)
         args['x_label'] = 'czas [data]'
 
         return plot(args)
